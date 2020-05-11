@@ -22,6 +22,8 @@
 
 #!/usr/bin/env python
 
+new_pull_request = 0
+
 import json
 import time
 import numpy as np
