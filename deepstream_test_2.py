@@ -22,24 +22,18 @@
 
 #!/usr/bin/env python
 
-new_pull_request = 0
-
 import json
-import time
 import numpy as np
 import statistics
-import matplotlib.pyplot as plt
 import sys
 sys.path.append('../')
 import platform
 import configparser
-
 import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import GObject, Gst
 from common.is_aarch_64 import is_aarch64
 from common.bus_call import bus_call
-
 import pyds
 
 PGIE_CLASS_ID_VEHICLE = 0
@@ -65,7 +59,9 @@ class Gate:
 
 ########## Gate Class ##########
 
-total_cars = 0  # total cars detected in the stream (global variable)
+stream_width = 1920     # horizontal scale of inference geometry as opposed to the width of input stream
+stream_height = 1080    # vertical scale of inference geometry as opposed to the height of input stream
+total_cars = 0  # total cars detected in the stream, i.e., total cars assigned unique tracking IDs
 x11 = 540     # leftmost 'vertical' segment top
 x12 = 840     
 x13 = 1110
@@ -74,14 +70,12 @@ x21 = 340
 x22 = 760
 x23 = 1170     
 x24 = 1610     # rightmost 'vertical' segment bottom
-y1 = 384
-y2 = 633
+y1 = 384    # optimal range filter start
+y2 = 633    # optimal range filter end
 gate_list = []  # list for the detected vehicles and their frames
 
 def osd_sink_pad_buffer_probe(pad, info, u_data):
-    frame_number = 0
-    now = time.time()
-    frame_now = frame_number
+    
     # Intiallizing object counter with 0.
     obj_counter = {
         PGIE_CLASS_ID_VEHICLE: 0,
@@ -89,6 +83,7 @@ def osd_sink_pad_buffer_probe(pad, info, u_data):
         PGIE_CLASS_ID_BICYCLE: 0,
         PGIE_CLASS_ID_ROADSIGN: 0
     }
+    
     num_rects = 0
     global total_cars  # explicit mention of the global variable inside the function
     global x11, x12, x13, x14, x21, x22, x23, x24   # lanes
@@ -121,7 +116,7 @@ def osd_sink_pad_buffer_probe(pad, info, u_data):
                 # Casting l_obj.data to pyds.NvDsObjectMeta
                 obj_meta = pyds.glist_get_nvds_object_meta(l_obj.data)
                 if obj_meta.class_id == PGIE_CLASS_ID_VEHICLE:
-                    if obj_meta.rect_params.height < 368:   # drop instances exceeding the tracker height (specified in the tracker config file)
+                    if obj_meta.rect_params.top >= y1 and obj_meta.rect_params.top <= y2:
                         car_found = 0
                         for x in gate_list:
                             if x.vehicle_id == obj_meta.object_id:
@@ -136,17 +131,14 @@ def osd_sink_pad_buffer_probe(pad, info, u_data):
                                 x.y_largest = max(x.y_list)
                                 x_center = int(obj_meta.rect_params.left + (obj_meta.rect_params.width / 2))
                                 y_center = int(obj_meta.rect_params.top + (obj_meta.rect_params.height / 2))
-                                if y_center > y1:
-                                    if x_center > min(x13, x23):
-                                        x.lane.append('fast')
-                                    elif x_center > min(x12, x22):
-                                        x.lane.append('medium')
-                                    elif x_center > min(x11, x21):
-                                        x.lane.append('slow')
-                                    else:
-                                        x.lane.append('shoulder')
+                                if x_center > min(x13, x23):
+                                    x.lane.append('fast')
+                                elif x_center > min(x12, x22):
+                                    x.lane.append('medium')
+                                elif x_center > min(x11, x21):
+                                    x.lane.append('slow')
                                 else:
-                                    x.lane.append('-')
+                                    x.lane.append('shoulder')
                                 car_found = 1
                                 break
     
@@ -164,21 +156,18 @@ def osd_sink_pad_buffer_probe(pad, info, u_data):
                             x_center = int(obj_meta.rect_params.left + (obj_meta.rect_params.width / 2))
                             y_center = int(obj_meta.rect_params.top + (obj_meta.rect_params.height / 2))
                             lane_temp_list = []
-                            if y_center > y1:
-                                if x_center > min(x13, x23):
-                                    lane_temp_list.append('fast')
-                                elif x_center > min(x12, x22):
-                                    lane_temp_list.append('medium')
-                                elif x_center > min(x11, x21):
-                                    lane_temp_list.append('slow')
-                                else:
-                                    lane_temp_list.append('shoulder')
+                            if x_center > min(x13, x23):
+                                lane_temp_list.append('fast')
+                            elif x_center > min(x12, x22):
+                                lane_temp_list.append('medium')
+                            elif x_center > min(x11, x21):
+                                lane_temp_list.append('slow')
                             else:
-                                lane_temp_list.append('-')
+                                lane_temp_list.append('shoulder')
                             gate_list.append(Gate(obj_meta.object_id, min(x_temp_list), max(x_temp_list), min(y_temp_list), max(y_temp_list), frame_temp_list, x_temp_list, y_temp_list, xc_temp_list, yc_temp_list, lane_temp_list))
                      
                     if obj_meta.object_id > total_cars:
-                        total_cars = obj_meta.object_id  # total objects detected in stream
+                        total_cars = obj_meta.object_id  # total cars assigned unique tracing IDs
                   
                     print('Vehicle ID = ', obj_meta.object_id, ', Frame Number = ', frame_number, ', Top X = ', obj_meta.rect_params.left,
                           ', Top Y = ', obj_meta.rect_params.top, ', Width = ', obj_meta.rect_params.width, ', Height = ', obj_meta.rect_params.height)
@@ -366,10 +355,8 @@ def main(args):
 
     print("Playing file %s " % args[1])
     source.set_property('location', args[1])
-    stream_width = 1920
-    stream_height = 1080
-    streammux.set_property('width', 1920)
-    streammux.set_property('height', 1080)
+    streammux.set_property('width', stream_width)
+    streammux.set_property('height', stream_height)
     streammux.set_property('batch-size', 1)
     streammux.set_property('batched-push-timeout', 4000000)
 
@@ -438,9 +425,6 @@ def main(args):
     streammux.link(pgie)
     pgie.link(tracker)
     tracker.link(nvvidconv)
-    # sgie1.link(sgie2)     # secondary GIEs skipped
-    # sgie2.link(sgie3)
-    # sgie3.link(nvvidconv)
     nvvidconv.link(nvosd)
     if is_aarch64():
         nvosd.link(transform)
@@ -473,8 +457,6 @@ def main(args):
         pass
 
     print("\n******************** Statistical Analysis of Video Stream ********************\n")
-    giant_x_list = []
-    giant_y_list = []
     x_min_list = []
     x_max_list = []
     y_min_list = []
@@ -482,15 +464,12 @@ def main(args):
     id_list = []
     print('Data of all vehicles detected after a quarter of the maximum pixel height:')
     for car_objects in gate_list:
-        if car_objects.y_largest > 0.25 * stream_height:
-            giant_x_list = giant_x_list + car_objects.x_list
-            giant_y_list = giant_y_list + car_objects.y_list
-            x_min_list.append(car_objects.x_smallest)
-            x_max_list.append(car_objects.x_largest)
-            y_min_list.append(car_objects.y_smallest)
-            y_max_list.append(car_objects.y_largest)
-            id_list.append(car_objects.vehicle_id)
-            print(car_objects.vehicle_id, car_objects.frames_list, car_objects.x_list, car_objects.y_list, car_objects.xc_list, car_objects.yc_list, car_objects.lane, car_objects.x_smallest, car_objects.x_largest, car_objects.y_smallest, car_objects.y_largest, sep=' ')
+        x_min_list.append(car_objects.x_smallest)
+        x_max_list.append(car_objects.x_largest)
+        y_min_list.append(car_objects.y_smallest)
+        y_max_list.append(car_objects.y_largest)
+        id_list.append(car_objects.vehicle_id)
+        print(car_objects.vehicle_id, car_objects.frames_list, car_objects.x_list, car_objects.y_list, car_objects.xc_list, car_objects.yc_list, car_objects.lane, car_objects.x_smallest, car_objects.x_largest, car_objects.y_smallest, car_objects.y_largest, sep=' ')
             
     print('\n','Tracking IDs of all vehicles detected after (below) a quarter of the maximum pixel height:', id_list, len(id_list), '\n')
     
@@ -510,11 +489,9 @@ def main(args):
     print('Midpoint of y = ', midpoint)
     id_list_gate = []
     for c in gate_list:
-#        for y in c.y_list:
         for y in c.yc_list:
-            if y >= min(y_max_list) and midpoint:
-                if c.vehicle_id not in id_list_gate:
-                    id_list_gate.append(c.vehicle_id)            
+            if c.vehicle_id not in id_list_gate:
+                id_list_gate.append(c.vehicle_id)            
                 
     print('\n','Tracking IDs of all vehicles detected in the optimal frame range: ', id_list_gate, len(id_list_gate), '\n')
     
@@ -522,7 +499,6 @@ def main(args):
         if f.vehicle_id in id_list_gate:
             my_array = np.array(f.yc_list)
             pos = (np.abs(my_array - midpoint)).argmin()
-#            print('tracking id =', f.vehicle_id, ', optimal frame number =', f.frames_list[pos], ', optimal coordinate = (', f.x_list[pos], ',', f.y_list[pos], ')')
             print('tracking id =', f.vehicle_id, ', optimal frame number =', f.frames_list[pos], ', optimal coordinate = (', f.xc_list[pos], ',', f.yc_list[pos], ')', ', lane =', f.lane[pos])
             
     optimal_frame = {
