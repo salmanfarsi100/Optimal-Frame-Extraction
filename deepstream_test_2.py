@@ -493,7 +493,8 @@ def main(args):
             if c.vehicle_id not in id_list_gate:
                 id_list_gate.append(c.vehicle_id)            
                 
-    print('\n','Tracking IDs of all vehicles detected in the optimal frame range: ', id_list_gate, len(id_list_gate), '\n')
+    print('\n', 'Tracking IDs of all vehicles detected in the optimal frame range:', id_list_gate)
+    print('\n', 'Number of vehicles =', len(id_list_gate), '\n')
     
     for f in gate_list:
         if f.vehicle_id in id_list_gate:
