@@ -80,8 +80,8 @@ x21 = par[4]
 x22 = par[5]
 x23 = par[6]
 x24 = par[7]     # rightmost 'vertical' segment bottom
-y1 = par[8]    # optimal range filter start y
-y2 = par[9]    # optimal range filter end y
+y1 = par[8]    # optimal range filter start 
+y2 = par[9]    # optimal range filter end 
 
 vehicle_list = []
 rgb_frames_list = []
@@ -263,22 +263,7 @@ def tiler_sink_pad_buffer_probe(pad,info,u_data):
             except StopIteration:
                 break
             obj_counter[obj_meta.class_id] += 1
-            # Periodically check for objects with borderline confidence value that may be false positive detections.
-            # If such detections are found, annoate the frame with bboxes and confidence value.
-            # Save the annotated frame to file.
-            if((saved_count["stream_"+str(frame_meta.pad_index)]%30==0) and (obj_meta.confidence>0.3)):
-                if is_first_obj:
-                    is_first_obj = False
-                    # Getting Image data using nvbufsurface
-                    # the input should be address of buffer and batch_id
-                    n_frame=pyds.get_nvds_buf_surface(hash(gst_buffer),frame_meta.batch_id)
-                    #convert python array into numy array format.
-                    frame_image=np.array(n_frame,copy=True,order='C')
-                    #covert the array into cv2 default color format
-                    frame_image=cv2.cvtColor(frame_image,cv2.COLOR_RGBA2BGRA)
-
-                save_image = True
-                frame_image=draw_bounding_boxes(frame_image,obj_meta,obj_meta.confidence)
+            
             try: 
                 l_obj=l_obj.next
             except StopIteration:
@@ -374,14 +359,11 @@ def tiler_sink_pad_buffer_probe(pad,info,u_data):
         x14 = py_nvosd_line_params.x1
         x24 = py_nvosd_line_params.x2
         
-        # SAVE FRAME TO rgb_frames_list
+        # save current frame to rgb_frames_list
         n_frame=pyds.get_nvds_buf_surface(hash(gst_buffer),frame_meta.batch_id)
         frame_image=np.array(n_frame,copy=True,order='C')
         frame_image=cv2.cvtColor(frame_image,cv2.COLOR_RGBA2BGRA)
         rgb_frames_list.append(RGB_Frame(frame_number, frame_image))
-        #if int(frame_number) % 80 == 0:
-        #    for x in range(80):
-        #        del rgb_frames_list[x]
         if len(rgb_frames_list) > 120:
             for x in range(20):
                 del rgb_frames_list[x]
@@ -542,10 +524,6 @@ def main(args):
     if not tracker:
         sys.stderr.write(" Unable to create tracker \n")
     
-#    sgie3 = Gst.ElementFactory.make("nvinfer", "secondary1-nvinference-engine")     # secondary gie for classification (car type)
-#    if not sgie3:
-#        sys.stderr.write(" Unable to make sgie3 \n")
-    
     # Add nvvidconv1 and filter1 to convert the frames to RGBA
     # which is easier to work with in Python.
     print("Creating nvvidconv1 \n ")
@@ -628,9 +606,6 @@ def main(args):
             tracker_enable_batch_process = config.getint('tracker', key)
             tracker.set_property('enable_batch_process', tracker_enable_batch_process)
 
-#    # Set properties of sgie3
-#    sgie3.set_property('config-file-path', "dstest2_sgie3_config.txt")
-
     if not is_aarch64():
         # Use CUDA unified memory in the pipeline so frames
         # can be easily accessed on CPU in Python.
@@ -643,7 +618,6 @@ def main(args):
     print("Adding elements to Pipeline \n")
     pipeline.add(pgie)
     pipeline.add(tracker)
-#    pipeline.add(sgie3)
     pipeline.add(tiler)
     pipeline.add(nvvidconv)
     pipeline.add(filter1)
@@ -657,7 +631,6 @@ def main(args):
     streammux.link(pgie)    
     pgie.link(tracker)
     tracker.link(nvvidconv1)
-#    sgie3.link(nvvidconv1)
     nvvidconv1.link(filter1)
     filter1.link(tiler)
     tiler.link(nvvidconv)
@@ -693,19 +666,6 @@ def main(args):
         loop.run()
     except:
         pass
-    
-#    count = 0
-#    for car_objects in vehicle_list:
-#        print(car_objects.vehicle_id, car_objects.frames_list, car_objects.x_list, car_objects.y_list, car_objects.xc_list, car_objects.yc_list, car_objects.width_list, car_objects.height_list, car_objects.lane_list, len(car_objects.frames_list), sep=' ')
-#        print('\n')
-#        count += 1
-        
-#    print(count)
-    
-#    index = 0
-#    for f in rgb_frames_list:
-#        cv2.imwrite(folder_name+"/stream_"+str(0)+"/frame_"+str(index)+".jpg",f)
-#        index += 1
 
     # cleanup
     print("Exiting app\n")
