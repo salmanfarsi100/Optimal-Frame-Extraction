@@ -206,7 +206,6 @@ def tiler_sink_pad_buffer_probe(pad,info,u_data):
                                 lane_temp_list.append('fast')
                                 
                             vehicle_list.append(Vehicle(obj_meta.object_id, frames_temp_list, x_temp_list, y_temp_list, xc_temp_list, yc_temp_list, width_temp_list, height_temp_list, lane_temp_list))     # initialize vehicle metadata lists
-                            vehicle_count += 1
                         
                     print('Vehicle ID = ', obj_meta.object_id, ', Frame Number = ', frame_number, ', Top X = ', obj_meta.rect_params.left,', Top Y = ', obj_meta.rect_params.top, ', Width = ', obj_meta.rect_params.width, ', Height = ', obj_meta.rect_params.height)     # show metadata of vehicle detection instance
 
@@ -215,10 +214,10 @@ def tiler_sink_pad_buffer_probe(pad,info,u_data):
                         if (frame_lag > 20) and int(len(o.frames_list)) <= 6:   # vehicle count rectifier; eliminates false tracking instances, i.e., ones not tracked long enough for conclusive tracking train resolution
                             print('inadequate number of frames in train, deleting...', '\n')
                             del vehicle_list[i]
-                            vehicle_count -= 1
                             break
                         
                         if frame_lag > 20 and frame_lag < 100:      # optimal frame extractor...the business end
+                            vehicle_count += 1
                             midpoint = int((y1 + y2) / 2)       # reference point of optimality
                             my_array = np.array(o.yc_list)
                             pos = (np.abs(my_array - midpoint)).argmin()    # position of frame in the vehicle object y coordinates list closest to midpoint of optimal range
@@ -236,6 +235,8 @@ def tiler_sink_pad_buffer_probe(pad,info,u_data):
                                 the_file.write(str(o.x_list[pos]))
                                 the_file.write(' ')
                                 the_file.write(str(o.y_list[pos]))
+                                the_file.write(' ')
+                                the_file.write(str(o.lane_list[pos]))
                                 the_file.write('\n')
                             xx1 = int(o.x_list[pos])
                             xx2 = int(o.x_list[pos]) + int(o.width_list[pos])
@@ -249,7 +250,7 @@ def tiler_sink_pad_buffer_probe(pad,info,u_data):
                                 else:
                                     finder += 1
                             crop = (rgb_frames_list[finder].rgb_image)[yy1:yy2, xx1:xx2]    # crop the part of the frame bounding the vehicle
-                            cv2.imwrite(folder_name+"/stream_"+str(0)+"/frame_id="+str(temp_frame_number)+'_'+str(temp_id)+".jpg", crop)
+                            cv2.imwrite(folder_name+"/stream_"+str(0)+"/numb_frno_trid="+str(vehicle_count)+'_'+str(temp_frame_number)+'_'+str(temp_id)+".jpg", crop)
                             break
                             
                         if frame_lag > 100:     # vehicle buffer cleaner; eliminates expired tracking instances
