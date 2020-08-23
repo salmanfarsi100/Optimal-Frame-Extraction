@@ -205,12 +205,12 @@ def tiler_sink_pad_buffer_probe(pad,info,u_data):
             print('y_min:', y_min_list, len(y_min_list), '\n')
             print('y_max:', y_max_list, len(y_max_list), '\n')
             print('Optimal Frame Range:')
-            print('y:', min(y_max_list), max(y_min_list))
+            print('y:', min(y_max_list)-100, max(y_min_list))
             
             with open('/opt/nvidia/deepstream/deepstream-5.0/sources/deepstream_python_apps/apps/optimal_frame_extractor/road.txt', 'r') as file:   # input file of the frame extractor application
                 data = file.readlines()    
-            data[8] = str('y1 ') + str(min(y_max_list)) + str(' #opt_frm_inf_start') + str('\n')
-            data[9] = str('y2 ') + str(max(y_min_list)) + str(' #opt_frm_inf_end')
+            data[10] = str('y1 ') + str(min(y_max_list)-100) + str(' #opt_frm_inf_start') + str('\n')
+            data[11] = str('y2 ') + str(max(y_min_list)) + str(' #opt_frm_inf_end')
             with open('/opt/nvidia/deepstream/deepstream-5.0/sources/deepstream_python_apps/apps/optimal_frame_extractor/road.txt', 'w') as file:
                 file.writelines(data)
             
