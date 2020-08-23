@@ -80,8 +80,10 @@ x21 = par[4]    # leftmost 'vertical' segment bottom
 x22 = par[5]    # second lane from the left 'vertical' segment bottom
 x23 = par[6]    # third lane from the left 'vertical' segment bottom
 x24 = par[7]    # rightmost 'vertical' segment bottom
-y1 = par[8]    # optimal range filter start 
-y2 = par[9]    # optimal range filter end 
+y11 = par[8]    # lane top y; for all lanes
+y22 = par[9]    # lane bottom y; for all lanes
+y1 = par[10]    # optimal range filter start 
+y2 = par[11]    # optimal range filter end 
 
 vehicle_list = []   # vehicle bounding box metadata buffer
 rgb_frames_list = []    # video stream image metadata buffer
@@ -308,9 +310,9 @@ def tiler_sink_pad_buffer_probe(pad,info,u_data):
         # Draw x11_x21
         py_nvosd_line_params = display_meta.line_params[0]
         py_nvosd_line_params.x1 = x11
-        py_nvosd_line_params.y1 = y1
+        py_nvosd_line_params.y1 = y11
         py_nvosd_line_params.x2 = x21
-        py_nvosd_line_params.y2 = y2
+        py_nvosd_line_params.y2 = y22
         py_nvosd_line_params.line_width = 5
         py_nvosd_line_params.line_color.set(0.0, 1.0, 0.0, 1.0)
         display_meta.num_lines = display_meta.num_lines + 1
@@ -321,9 +323,9 @@ def tiler_sink_pad_buffer_probe(pad,info,u_data):
         # Draw x12_x22
         py_nvosd_line_params = display_meta.line_params[1]
         py_nvosd_line_params.x1 = x12
-        py_nvosd_line_params.y1 = y1
+        py_nvosd_line_params.y1 = y11
         py_nvosd_line_params.x2 = x22
-        py_nvosd_line_params.y2 = y2
+        py_nvosd_line_params.y2 = y22
         py_nvosd_line_params.line_width = 5
         py_nvosd_line_params.line_color.set(0.0, 1.0, 0.0, 1.0)
         display_meta.num_lines = display_meta.num_lines + 1
@@ -334,9 +336,9 @@ def tiler_sink_pad_buffer_probe(pad,info,u_data):
         # Draw x13_x23
         py_nvosd_line_params = display_meta.line_params[2]
         py_nvosd_line_params.x1 = x13
-        py_nvosd_line_params.y1 = y1
+        py_nvosd_line_params.y1 = y11
         py_nvosd_line_params.x2 = x23
-        py_nvosd_line_params.y2 = y2
+        py_nvosd_line_params.y2 = y22
         py_nvosd_line_params.line_width = 5
         py_nvosd_line_params.line_color.set(0.0, 1.0, 0.0, 1.0)
         display_meta.num_lines = display_meta.num_lines + 1
@@ -347,9 +349,9 @@ def tiler_sink_pad_buffer_probe(pad,info,u_data):
         # Draw x14_x24
         py_nvosd_line_params = display_meta.line_params[3]
         py_nvosd_line_params.x1 = x14
-        py_nvosd_line_params.y1 = y1
+        py_nvosd_line_params.y1 = y11
         py_nvosd_line_params.x2 = x24
-        py_nvosd_line_params.y2 = y2
+        py_nvosd_line_params.y2 = y22
         py_nvosd_line_params.line_width = 5
         py_nvosd_line_params.line_color.set(0.0, 1.0, 0.0, 1.0)
         display_meta.num_lines = display_meta.num_lines + 1
