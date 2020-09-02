@@ -22,6 +22,8 @@
 # DEALINGS IN THE SOFTWARE.
 ################################################################################
 
+import requests
+from datetime import datetime
 import sys
 sys.path.append('../')
 import gi
@@ -51,6 +53,8 @@ PGIE_CLASS_ID_VEHICLE=0
 global PGIE_CLASS_ID_PERSON
 PGIE_CLASS_ID_PERSON=2
 
+BASE = "http://127.0.0.1:5000/"     # local host
+    
 MAX_DISPLAY_LEN=64
 PGIE_CLASS_ID_VEHICLE = 0
 PGIE_CLASS_ID_BICYCLE = 1
@@ -114,10 +118,25 @@ class RGB_Frame:
 
 ########## RGB Frame Class ##########
 
+response = requests.get(BASE + "road/1")
+x11 = int(response.json()['x11'])
+x12 = int(response.json()['x12'])
+x13 = int(response.json()['x13']) 
+x14 = int(response.json()['x14']) 
+x21 = int(response.json()['x21'])   
+x22 = int(response.json()['x22'])   
+x23 = int(response.json()['x23'])
+x24 = int(response.json()['x24'])   
+y11 = int(response.json()['y11'])   
+y22 = int(response.json()['y22'])  
+y1 = int(response.json()['y1'])   
+y2 = int(response.json()['y2'])   
+
 # tiler_sink_pad_buffer_probe  will extract metadata received on tiler src pad
 # and update params for drawing rectangle, object information etc.
 def tiler_sink_pad_buffer_probe(pad,info,u_data):
     global x11, x12, x13, x14, x21, x22, x23, x24
+    global y11, y22, y1, y2
     global vehicle_count
     frame_number=0
     num_rects=0
@@ -222,9 +241,14 @@ def tiler_sink_pad_buffer_probe(pad,info,u_data):
                             vehicle_count += 1
                             midpoint = int((y1 + y2) / 2)       # reference point of optimality
                             my_array = np.array(o.yc_list)
-                            pos = (np.abs(my_array - midpoint)).argmin()    # position of frame in the vehicle object y coordinates list closest to midpoint of optimal range
+                            pos = (np.abs(my_array - midpoint)).argmin()    # position of frame - in the vehicle object y coordinates list - closest to the midpoint of optimal range
                             temp_frame_number = o.frames_list[pos]
                             temp_id = o.vehicle_id
+                            now = datetime.now()
+                            dt_string = now.strftime('%d/%m/%Y %H:%M:%S')
+                            image_path = folder_name+"/stream_"+str(0)+"/numb_frno_trid="+str(vehicle_count)+'_'+str(temp_frame_number)+'_'+str(temp_id)+".jpg"
+                            response = requests.put(BASE + "vehicle/" + str(o.vehicle_id), {"frame_number": str(o.frames_list[pos]), "lane": str(o.lane_list[pos]), "datetime": str(dt_string), "image_path": str(image_path)})     # add to server database
+                            print(response.json())
                             with open('optimal_frame_extraction.txt', 'a') as the_file:
                                 the_file.write(str(o.frames_list[pos]))
                                 the_file.write(' ')
@@ -239,6 +263,8 @@ def tiler_sink_pad_buffer_probe(pad,info,u_data):
                                 the_file.write(str(o.y_list[pos]))
                                 the_file.write(' ')
                                 the_file.write(str(o.lane_list[pos]))
+                                the_file.write(' ')
+                                the_file.write(str(dt_string))
                                 the_file.write('\n')
                             xx1 = int(o.x_list[pos])
                             xx2 = int(o.x_list[pos]) + int(o.width_list[pos])
@@ -456,6 +482,10 @@ def create_source_bin(index,uri):
 
 def main(args):
     f = open('optimal_frame_extraction.txt', 'w')       # erase previous contents
+    f.close()
+    with open('optimal_frame_extraction.txt', 'a') as the_file:
+        the_file.write(str('f-no v-id wid hei x-top y-left lane date time'))
+        the_file.write('\n')
     f.close()
     
     # Check input arguments
