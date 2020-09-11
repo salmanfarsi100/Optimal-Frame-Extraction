@@ -25,7 +25,10 @@ class SpeedMonitor:
 
         self.SpeedConfg =   config.options('SpeedSensorConfig')
         self.confsect  = config['SpeedSensorConfig']
-        self.port= "COM4"
+        if system()=="Linux":
+            self.port="/dev/ttyACM0"
+        else:
+            self.port= "COM4"
         self.buad_rate      =   self.confsect['brate']
         self.sample_freq    =   self.confsect['samplefreq']
         self.speed_unit     =   self.confsect['speedunit'] #Set speed unit
